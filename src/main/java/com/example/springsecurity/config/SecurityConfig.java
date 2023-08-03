@@ -2,17 +2,70 @@ package com.example.springsecurity.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    @Bean
+    public PasswordEncoder getPassWordEncoder(){
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
-    public SecurityFilterChain getSecurityFilterChain(HttpSecurity httpSecurity){
+    public UserDetailsService userDetailsService(){
+//
+//        UserDetails student= User.builder().username("Ayan")
+//                .password(getPassWordEncoder().encode("abc123"))
+//                .roles("STUDENT")
+//                .build();
+//
+//        UserDetails admin= User.builder().username("Bhanu")
+//                .password(getPassWordEncoder().encode("bhanu123"))
+//                .roles("ADMIN")
+//                .build();
 
-        return httpSecurity.csrf().disable()
+       // return new InMemoryUserDetailsManager(student,admin);
+        return new CustomUserDetailsService();
+    }
+
+    @Bean
+    public SecurityFilterChain getSecurityFilterChain(HttpSecurity httpSecurity)throws Exception{
+
+                httpSecurity.csrf().disable()
+                .authorizeHttpRequests()
+                .requestMatchers("/public/**")
+                .permitAll()
+                        .requestMatchers("/student/**")
+                        .hasAnyRole("STUDENT","ADMIN")
+                        .requestMatchers("/admin/**")
+                        .hasRole("ADMIN")
+//                        .requestMatchers("/student/")
+//                        .hasRole("/ADMIN")
+                .anyRequest()
+                .authenticated()
+                .and()
+                .formLogin();
+
+        return httpSecurity.build();
+
+    }
+    @Bean
+    public AuthenticationProvider getAuthenticationProvider(){
+
+        DaoAuthenticationProvider daoAuthenticationProvider=new DaoAuthenticationProvider();
+        daoAuthenticationProvider.setUserDetailsService(userDetailsService());
+        daoAuthenticationProvider.setPasswordEncoder(getPassWordEncoder());
+        return daoAuthenticationProvider;
     }
 }
